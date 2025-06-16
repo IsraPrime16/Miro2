@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Sistema de Chamados</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="style.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+  <div class="container py-5">
+    <div class="text-center mb-4">
+      <h1 class="display-5 fw-bold text-primary">Sistema de Chamados</h1>
+      <p class="lead">Gerencie chamados de forma simples e rápida</p>
+    </div>
+    <div class="card shadow-sm mb-4">
+      <div class="card-body d-flex flex-column flex-md-row align-items-center gap-2">
+        <input id="titulo" class="form-control flex-grow-1" placeholder="Título do chamado">
+        <button class="btn btn-primary" onclick="adicionarChamado()">Adicionar</button>
+      </div>
+    </div>
+    <div class="row g-4">
+      <div class="col-md-4">
+        <div class="card border-primary shadow-sm">
+          <div class="card-header bg-primary text-white text-center">
+            <h4 class="mb-0">Fila de Chamados</h4>
+          </div>
+          <ul class="list-group list-group-flush" id="fila"></ul>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card border-warning shadow-sm">
+          <div class="card-header bg-warning text-dark text-center">
+            <h4 class="mb-0">Em Atendimento</h4>
+          </div>
+          <ul class="list-group list-group-flush" id="atendimento"></ul>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card border-success shadow-sm">
+          <div class="card-header bg-success text-white text-center">
+            <h4 class="mb-0">Concluídos</h4>
+          </div>
+          <ul class="list-group list-group-flush" id="concluidos"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const API = 'http://localhost:3001/chamados';
+
+    function carregarChamados() {
+      fetch(API)
+        .then(res => res.json())
+        .then(chamados => {
+          document.getElementById('fila').innerHTML = '';
+          document.getElementById('atendimento').innerHTML = '';
+          document.getElementById('concluidos').innerHTML = '';
+          chamados.forEach(c => {
+            let li = document.createElement('li');
+            li.className = 'list-group-item d-flex justify-content-between align-items-center chamado-item';
+            li.textContent = c.titulo;
+            if (c.status === 'Fila') {
+              let btn = document.createElement('button');
+              btn.className = 'btn btn-sm btn-outline-warning';
+              btn.textContent = 'Atender';
+              btn.onclick = () => atualizarStatus(c.id, 'Em Atendimento');
+              li.appendChild(btn);
+              document.getElementById('fila').appendChild(li);
+            } else if (c.status === 'Em Atendimento') {
+              let btn = document.createElement('button');
+              btn.className = 'btn btn-sm btn-outline-success';
+              btn.textContent = 'Concluir';
+              btn.onclick = () => atualizarStatus(c.id, 'Concluídos');
+              li.appendChild(btn);
+              document.getElementById('atendimento').appendChild(li);
+            } else if (c.status === 'Concluídos') {
+              document.getElementById('concluidos').appendChild(li);
+            }
+          });
+        });
+    }
+
+    function adicionarChamado() {
+      const titulo = document.getElementById('titulo').value.trim();
+      if (!titulo) return;
+      fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ titulo })
+      }).then(() => {
+        document.getElementById('titulo').value = '';
+        carregarChamados();
+      });
+    }
+
+    function atualizarStatus(id, status) {
+      fetch(`${API}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      }).then(carregarChamados);
+    }
+
+    carregarChamados();
+  </script>
+</body>
+</html>

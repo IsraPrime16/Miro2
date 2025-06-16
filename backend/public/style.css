@@ -1,0 +1,26 @@
+body {
+  background: #f8fafc;
+}
+
+.card-header {
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+.chamado-item {
+  transition: background 0.2s;
+}
+
+.chamado-item:hover {
+  background: #f1f3f5;
+}
+
+input#titulo {
+  min-width: 200px;
+}
+
+@media (max-width: 768px) {
+  .card-header {
+    font-size: 1rem;
+  }
+}
