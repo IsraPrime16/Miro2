@@ -12,6 +12,7 @@
       <h1 class="display-5 fw-bold text-primary">Sistema de Chamados</h1>
       <p class="lead">Gerencie chamados de forma simples e rápida</p>
     </div>
+
     <form id="form-chamado" class="row g-2 mb-4">
       <div class="col-md-4">
         <input type="text" id="titulo" class="form-control" placeholder="Título do chamado" required>
@@ -30,35 +31,82 @@
         <button type="submit" class="btn btn-primary">Criar Chamado</button>
       </div>
     </form>
-    <div class="row g-4">
-      <div class="col-md-4">
-        <div class="card border-primary shadow-sm">
-          <div class="card-header bg-primary text-white text-center">
-            <h4 class="mb-0">Fila de Chamados</h4>
-          </div>
-          <ul class="list-group list-group-flush" id="fila"></ul>
+
+    <div class="row mb-3">
+      <div class="col">
+        <div class="d-flex align-items-center mb-2">
+          <button class="btn btn-primary w-100 me-2" disabled>Fila de Chamados</button>
+          <button class="btn btn-outline-secondary btn-sm" onclick="abrirFiltro('Fila de Atendimento')">Filtro</button>
         </div>
+        <ul id="fila" class="list-group"></ul>
       </div>
-      <div class="col-md-4">
-        <div class="card border-warning shadow-sm">
-          <div class="card-header bg-warning text-dark text-center">
-            <h4 class="mb-0">Em Atendimento</h4>
-          </div>
-          <ul class="list-group list-group-flush" id="atendimento"></ul>
+      <div class="col">
+        <div class="d-flex align-items-center mb-2">
+          <button class="btn btn-warning w-100 me-2" disabled>Em Atendimento</button>
+          <button class="btn btn-outline-secondary btn-sm" onclick="abrirFiltro('Em Atendimento')">Filtro</button>
         </div>
+        <ul id="atendimento" class="list-group"></ul>
       </div>
-      <div class="col-md-4">
-        <div class="card border-success shadow-sm">
-          <div class="card-header bg-success text-white text-center">
-            <h4 class="mb-0">Concluídos</h4>
-          </div>
-          <ul class="list-group list-group-flush" id="concluidos"></ul>
+      <div class="col">
+        <div class="d-flex align-items-center mb-2">
+          <button class="btn btn-success w-100 me-2" disabled>Concluídos</button>
+          <button class="btn btn-outline-secondary btn-sm" onclick="abrirFiltro('Concluídos')">Filtro</button>
+        </div>
+        <ul id="concluidos" class="list-group"></ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" tabindex="-1" id="modalFiltro" style="display:none; background:rgba(0,0,0,0.3); position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:9999;">
+    <div class="modal-dialog" style="margin:10% auto; max-width:300px;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="tituloModalFiltro">Filtrar por prioridade</h5>
+          <button type="button" class="btn-close" onclick="fecharFiltro()"></button>
+        </div>
+        <div class="modal-body">
+          <select id="filtro-prioridade-modal" class="form-select">
+            <option value="">Todas</option>
+            <option value="Normal">Normal</option>
+            <option value="Alta">Alta</option>
+            <option value="Crítica">Crítica</option>
+          </select>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="fecharFiltro()">Cancelar</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="aplicarFiltro()">Aplicar</button>
         </div>
       </div>
     </div>
   </div>
+
   <script>
     const API = 'http://localhost:3001/chamados';
+
+    let filaFiltroAtual = '';
+    let filtrosPorFila = {
+      'Fila de Atendimento': '',
+      'Em Atendimento': '',
+      'Concluídos': ''
+    };
+
+    function abrirFiltro(fila) {
+      filaFiltroAtual = fila;
+      document.getElementById('tituloModalFiltro').innerText = `Filtrar ${fila} por prioridade`;
+      document.getElementById('filtro-prioridade-modal').value = filtrosPorFila[fila] || '';
+      document.getElementById('modalFiltro').style.display = 'block';
+    }
+
+    function fecharFiltro() {
+      document.getElementById('modalFiltro').style.display = 'none';
+    }
+
+    function aplicarFiltro() {
+      const prioridade = document.getElementById('filtro-prioridade-modal').value;
+      filtrosPorFila[filaFiltroAtual] = prioridade;
+      fecharFiltro();
+      carregarChamados();
+    }
 
     function carregarChamados() {
       fetch(API)
@@ -67,18 +115,23 @@
           document.getElementById('fila').innerHTML = '';
           document.getElementById('atendimento').innerHTML = '';
           document.getElementById('concluidos').innerHTML = '';
+
           chamados.forEach(c => {
+            if (c.status === 'Fila de Atendimento' && filtrosPorFila['Fila de Atendimento'] && c.prioridade !== filtrosPorFila['Fila de Atendimento']) return;
+            if (c.status === 'Em Atendimento' && filtrosPorFila['Em Atendimento'] && c.prioridade !== filtrosPorFila['Em Atendimento']) return;
+            if (c.status === 'Concluídos' && filtrosPorFila['Concluídos'] && c.prioridade !== filtrosPorFila['Concluídos']) return;
+
             let li = document.createElement('li');
             li.className = 'list-group-item d-flex justify-content-between align-items-start';
             li.innerHTML = `
-  <div>
-    <div class="fw-bold">${c.titulo} <span class="badge bg-${
-      c.prioridade === 'Crítica' ? 'danger' : c.prioridade === 'Alta' ? 'warning text-dark' : 'secondary'
-    }">${c.prioridade}</span></div>
-    <div class="text-muted small">${c.descricao || ''}</div>
-  </div>
-`;
-            // Adicione os botões conforme o status
+              <div>
+                <div class="fw-bold">${c.titulo} <span class="badge bg-${
+                  c.prioridade === 'Crítica' ? 'danger' : c.prioridade === 'Alta' ? 'warning text-dark' : 'secondary'
+                }">${c.prioridade}</span></div>
+                <div class="text-muted small">${c.descricao || ''}</div>
+              </div>
+            `;
+
             if (c.status === 'Fila de Atendimento') {
               let btn = document.createElement('button');
               btn.className = 'btn btn-sm btn-outline-warning';
@@ -95,7 +148,7 @@
               document.getElementById('atendimento').appendChild(li);
             } else if (c.status === 'Concluídos') {
               let btn = document.createElement('button');
-              btn.className = 'btn btn-sm btn-outline-warning ms-2';
+              btn.className = 'btn btn-sm btn-outline-primary';
               btn.textContent = 'Reabrir';
               btn.onclick = () => reabrirChamado(c.id);
               li.appendChild(btn);

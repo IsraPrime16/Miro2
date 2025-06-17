@@ -28,7 +28,14 @@ db.serialize(() => {
 
 // 🔸 Listar chamados
 app.get('/chamados', (req, res) => {
-  db.all('SELECT * FROM chamados', [], (err, rows) => {
+  const { prioridade } = req.query;
+  let sql = 'SELECT * FROM chamados';
+  let params = [];
+  if (prioridade) {
+    sql += ' WHERE prioridade = ?';
+    params.push(prioridade);
+  }
+  db.all(sql, params, (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(rows);
   });
