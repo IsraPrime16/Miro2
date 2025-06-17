@@ -12,12 +12,24 @@
       <h1 class="display-5 fw-bold text-primary">Sistema de Chamados</h1>
       <p class="lead">Gerencie chamados de forma simples e rápida</p>
     </div>
-    <div class="card shadow-sm mb-4">
-      <div class="card-body d-flex flex-column flex-md-row align-items-center gap-2">
-        <input id="titulo" class="form-control flex-grow-1" placeholder="Título do chamado">
-        <button class="btn btn-primary" onclick="adicionarChamado()">Adicionar</button>
+    <form id="form-chamado" class="row g-2 mb-4">
+      <div class="col-md-4">
+        <input type="text" id="titulo" class="form-control" placeholder="Título do chamado" required>
       </div>
-    </div>
+      <div class="col-md-4">
+        <textarea id="descricao" class="form-control" placeholder="Descrição do chamado" required rows="1"></textarea>
+      </div>
+      <div class="col-md-2">
+        <select id="prioridade" class="form-select" required>
+          <option value="Normal">Normal</option>
+          <option value="Alta">Alta</option>
+          <option value="Crítica">Crítica</option>
+        </select>
+      </div>
+      <div class="col-md-2 d-grid">
+        <button type="submit" class="btn btn-primary">Criar Chamado</button>
+      </div>
+    </form>
     <div class="row g-4">
       <div class="col-md-4">
         <div class="card border-primary shadow-sm">
@@ -50,16 +62,24 @@
 
     function carregarChamados() {
       fetch(API)
-        .then(res => res.json())
+        .then(r => r.json())
         .then(chamados => {
           document.getElementById('fila').innerHTML = '';
           document.getElementById('atendimento').innerHTML = '';
           document.getElementById('concluidos').innerHTML = '';
           chamados.forEach(c => {
             let li = document.createElement('li');
-            li.className = 'list-group-item d-flex justify-content-between align-items-center chamado-item';
-            li.textContent = c.titulo;
-            if (c.status === 'Fila') {
+            li.className = 'list-group-item d-flex justify-content-between align-items-start';
+            li.innerHTML = `
+  <div>
+    <div class="fw-bold">${c.titulo} <span class="badge bg-${
+      c.prioridade === 'Crítica' ? 'danger' : c.prioridade === 'Alta' ? 'warning text-dark' : 'secondary'
+    }">${c.prioridade}</span></div>
+    <div class="text-muted small">${c.descricao || ''}</div>
+  </div>
+`;
+            // Adicione os botões conforme o status
+            if (c.status === 'Fila de Atendimento') {
               let btn = document.createElement('button');
               btn.className = 'btn btn-sm btn-outline-warning';
               btn.textContent = 'Atender';
@@ -74,21 +94,32 @@
               li.appendChild(btn);
               document.getElementById('atendimento').appendChild(li);
             } else if (c.status === 'Concluídos') {
+              let btn = document.createElement('button');
+              btn.className = 'btn btn-sm btn-outline-warning ms-2';
+              btn.textContent = 'Reabrir';
+              btn.onclick = () => reabrirChamado(c.id);
+              li.appendChild(btn);
               document.getElementById('concluidos').appendChild(li);
             }
           });
         });
     }
 
-    function adicionarChamado() {
-      const titulo = document.getElementById('titulo').value.trim();
-      if (!titulo) return;
+    document.getElementById('form-chamado').onsubmit = function(e) {
+      e.preventDefault();
       fetch(API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ titulo })
+        body: JSON.stringify({
+          titulo: document.getElementById('titulo').value,
+          descricao: document.getElementById('descricao').value,
+          prioridade: document.getElementById('prioridade').value
+        })
       }).then(() => {
         document.getElementById('titulo').value = '';
+        document.getElementById('descricao').value = '';
+        document.getElementById('prioridade').value = 'Normal';
+        document.getElementById('titulo').focus();
         carregarChamados();
       });
     }
@@ -98,6 +129,13 @@
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
+      }).then(carregarChamados);
+    }
+
+    function reabrirChamado(id) {
+      fetch(`${API}/${id}/reabrir`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' }
       }).then(carregarChamados);
     }
 

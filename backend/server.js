@@ -8,9 +8,10 @@ const PORT = 3001;
 app.use(cors());
 app.use(express.json());
 
-// Servir arquivos estáticos da pasta public
+// Servir arquivos estáticos (coloque o index.html na pasta "public")
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Conexão com o banco
 const db = new sqlite3.Database('./database.db');
 
 // Criação da tabela
@@ -19,12 +20,13 @@ db.serialize(() => {
     CREATE TABLE IF NOT EXISTS chamados (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       titulo TEXT,
+      descricao TEXT,
       status TEXT
     )
   `);
 });
 
-// Listar chamados por status
+// 🔸 Listar chamados
 app.get('/chamados', (req, res) => {
   db.all('SELECT * FROM chamados', [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -32,20 +34,20 @@ app.get('/chamados', (req, res) => {
   });
 });
 
-// Criar chamado
+// 🔸 Criar chamado
 app.post('/chamados', (req, res) => {
-  const { titulo } = req.body;
+  const { titulo, descricao, prioridade } = req.body;
   db.run(
-    'INSERT INTO chamados (titulo, status) VALUES (?, ?)',
-    [titulo, 'Fila'],
+    'INSERT INTO chamados (titulo, descricao, status, prioridade) VALUES (?, ?, ?, ?)',
+    [titulo, descricao, 'Fila de Atendimento', prioridade || 'Normal'],
     function (err) {
       if (err) return res.status(500).json({ error: err.message });
-      res.json({ id: this.lastID, titulo, status: 'Fila' });
+      res.json({ id: this.lastID });
     }
   );
 });
 
-// Atualizar status do chamado
+// 🔸 Atualizar status do chamado
 app.put('/chamados/:id', (req, res) => {
   const { status } = req.body;
   db.run(
@@ -58,6 +60,19 @@ app.put('/chamados/:id', (req, res) => {
   );
 });
 
+// 🔸 Reabrir chamado
+app.put('/chamados/:id/reabrir', (req, res) => {
+  db.run(
+    'UPDATE chamados SET status = ? WHERE id = ?',
+    ['Em Atendimento', req.params.id],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ updated: this.changes });
+    }
+  );
+});
+
+// 🔸 Iniciar servidor
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);
 });
