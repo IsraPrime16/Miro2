@@ -56,15 +56,27 @@ app.post('/chamados', (req, res) => {
 
 // 🔸 Atualizar status do chamado
 app.put('/chamados/:id', (req, res) => {
-  const { status } = req.body;
-  db.run(
-    'UPDATE chamados SET status = ? WHERE id = ?',
-    [status, req.params.id],
-    function (err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ updated: this.changes });
-    }
-  );
+  const { id } = req.params;
+  const { titulo, descricao, prioridade, status } = req.body;
+
+  // Atualização flexível: só altera os campos enviados
+  db.get('SELECT * FROM chamados WHERE id = ?', [id], (err, chamado) => {
+    if (err || !chamado) return res.status(404).json({ error: 'Chamado não encontrado' });
+
+    const novoTitulo = titulo !== undefined ? titulo : chamado.titulo;
+    const novaDescricao = descricao !== undefined ? descricao : chamado.descricao;
+    const novaPrioridade = prioridade !== undefined ? prioridade : chamado.prioridade;
+    const novoStatus = status !== undefined ? status : chamado.status;
+
+    db.run(
+      'UPDATE chamados SET titulo = ?, descricao = ?, prioridade = ?, status = ? WHERE id = ?',
+      [novoTitulo, novaDescricao, novaPrioridade, novoStatus, id],
+      function (err2) {
+        if (err2) return res.status(500).json({ error: 'Erro ao atualizar chamado' });
+        res.json({ success: true });
+      }
+    );
+  });
 });
 
 // 🔸 Reabrir chamado

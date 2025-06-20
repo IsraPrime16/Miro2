@@ -79,6 +79,39 @@
       </div>
     </div>
   </div>
+  <div class="modal" tabindex="-1" id="modalEditar" style="display:none; background:rgba(0,0,0,0.3); position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:9999;">
+    <div class="modal-dialog" style="margin:10% auto; max-width:400px;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Editar Chamado</h5>
+          <button type="button" class="btn-close" onclick="fecharModalEditar()"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="editar-id">
+          <div class="mb-2">
+            <label class="form-label">Título</label>
+            <input type="text" id="editar-titulo" class="form-control" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Descrição</label>
+            <textarea id="editar-descricao" class="form-control" rows="2" required></textarea>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Prioridade</label>
+            <select id="editar-prioridade" class="form-select" required>
+              <option value="Normal">Normal</option>
+              <option value="Alta">Alta</option>
+              <option value="Crítica">Crítica</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="fecharModalEditar()">Cancelar</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="salvarEdicaoChamado()">Salvar</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script>
     const API = 'http://localhost:3001/chamados';
@@ -131,6 +164,13 @@
                 <div class="text-muted small">${c.descricao || ''}</div>
               </div>
             `;
+
+            // Botão Editar (disponível em todos os status)
+            let btnEditar = document.createElement('button');
+            btnEditar.className = 'btn btn-sm btn-outline-info me-2';
+            btnEditar.textContent = 'Editar';
+            btnEditar.onclick = () => abrirModalEditar(c);
+            li.appendChild(btnEditar);
 
             if (c.status === 'Fila de Atendimento') {
               let btn = document.createElement('button');
@@ -190,6 +230,33 @@
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' }
       }).then(carregarChamados);
+    }
+
+    function abrirModalEditar(chamado) {
+      document.getElementById('editar-id').value = chamado.id;
+      document.getElementById('editar-titulo').value = chamado.titulo;
+      document.getElementById('editar-descricao').value = chamado.descricao;
+      document.getElementById('editar-prioridade').value = chamado.prioridade;
+      document.getElementById('modalEditar').style.display = 'block';
+    }
+
+    function fecharModalEditar() {
+      document.getElementById('modalEditar').style.display = 'none';
+    }
+
+    function salvarEdicaoChamado() {
+      const id = document.getElementById('editar-id').value;
+      const titulo = document.getElementById('editar-titulo').value;
+      const descricao = document.getElementById('editar-descricao').value;
+      const prioridade = document.getElementById('editar-prioridade').value;
+      fetch(`${API}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ titulo, descricao, prioridade })
+      }).then(() => {
+        fecharModalEditar();
+        carregarChamados();
+      });
     }
 
     carregarChamados();
