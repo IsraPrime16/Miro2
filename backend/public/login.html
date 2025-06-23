@@ -20,6 +20,8 @@
 <body>
   <div class="container">
     <div class="login-container">
+      
+      <!-- 🔑 Login -->
       <div id="login-form">
         <h3 class="mb-3 text-center">Login</h3>
         <div class="mb-3">
@@ -32,39 +34,52 @@
         <button onclick="showRegister()" class="btn btn-link w-100">Criar conta</button>
         <div id="login-erro" class="text-danger text-center mt-2"></div>
       </div>
+
+      <!-- 📝 Cadastro -->
       <div id="register-form" style="display:none;">
         <h3 class="mb-3 text-center">Cadastro</h3>
-        <div class="mb-3">
-          <input type="text" id="register-nome" class="form-control" placeholder="Nome" required>
-        </div>
-        <div class="mb-3">
-          <input type="email" id="register-email" class="form-control" placeholder="E-mail" required>
-        </div>
-        <div class="mb-3">
-          <input type="password" id="register-senha" class="form-control" placeholder="Senha" required>
-        </div>
-        <div class="mb-3 form-check">
-          <input type="checkbox" class="form-check-input" id="register-atendente">
-          <label class="form-check-label" for="register-atendente">Atendente</label>
-        </div>
-        <button onclick="register()" class="btn btn-success w-100 mb-2">Cadastrar</button>
-        <button onclick="showLogin()" class="btn btn-link w-100">Já tenho conta</button>
-        <div id="register-erro" class="text-danger text-center mt-2"></div>
+        <form id="form-cadastro">
+          <div class="mb-3">
+            <input type="text" id="nome" class="form-control" placeholder="Nome" required>
+          </div>
+          <div class="mb-3">
+            <input type="email" id="email" class="form-control" placeholder="E-mail" required>
+          </div>
+          <div class="mb-3">
+            <input type="password" id="senha" class="form-control" placeholder="Senha" required>
+          </div>
+          <div class="mb-3">
+            <label for="tipo-usuario" class="form-label">Tipo de conta</label>
+            <select id="tipo-usuario" class="form-select" required>
+              <option value="" disabled selected hidden>Selecione...</option>
+              <option value="Usuário">Usuário</option>
+              <option value="Atendente">Atendente</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-success w-100 mb-2">Cadastrar</button>
+          <button onclick="showLogin()" class="btn btn-link w-100" type="button">Já tenho conta</button>
+          <div id="register-erro" class="text-danger text-center mt-2"></div>
+        </form>
       </div>
+
     </div>
   </div>
+
   <script>
     function showRegister() {
       document.getElementById('login-form').style.display = 'none';
       document.getElementById('register-form').style.display = 'block';
     }
+
     function showLogin() {
       document.getElementById('register-form').style.display = 'none';
       document.getElementById('login-form').style.display = 'block';
     }
+
     function login() {
       const email = document.getElementById('login-email').value;
       const senha = document.getElementById('login-senha').value;
+      
       fetch('/usuarios/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -76,35 +91,48 @@
           document.getElementById('login-erro').innerText = res.error;
         } else {
           localStorage.setItem('usuario', JSON.stringify(res));
-          window.location.href = 'index.html';
+          
+          // 🔥 Redirecionamento baseado na função
+          if (!res.funcao) {
+  document.getElementById('login-erro').innerText = 'Erro: Função de usuário não definida. Contate o administrador.';
+} else if (res.funcao === 'Atendente') {
+  window.location.href = 'index.html';
+} else if (res.funcao === 'Usuário') {
+  window.location.href = 'chamados_cliente.html';
+} else {
+  document.getElementById('login-erro').innerText = 'Erro: Função de usuário não reconhecida.';
+}
         }
       });
     }
-    function register() {
-      const nome = document.getElementById('register-nome').value;
-      const email = document.getElementById('register-email').value;
-      const senha = document.getElementById('register-senha').value;
-      const atendente = document.getElementById('register-atendente').checked;
-      fetch('/usuarios/cadastrar', {
+
+    document.getElementById('form-cadastro').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const nome = document.getElementById('nome').value;
+      const email = document.getElementById('email').value;
+      const senha = document.getElementById('senha').value;
+      const funcao = document.getElementById('tipo-usuario').value;
+
+      fetch('/usuarios', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nome, email, senha, atendente })
+        body: JSON.stringify({ nome, email, senha, funcao })
       })
-      .then(r => r.json())
-      .then(res => {
-        if (res.error) {
-          document.getElementById('register-erro').innerText = res.error;
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) {
+          document.getElementById('register-erro').innerText = data.error;
         } else {
-          // Limpa os campos do formulário de cadastro
-          document.getElementById('register-nome').value = '';
-          document.getElementById('register-email').value = '';
-          document.getElementById('register-senha').value = '';
-          document.getElementById('register-atendente').checked = false;
+          document.getElementById('nome').value = '';
+          document.getElementById('email').value = '';
+          document.getElementById('senha').value = '';
+          document.getElementById('tipo-usuario').value = 'Usuário';
           showLogin();
           document.getElementById('login-email').value = email;
         }
       });
-    }
+    });
   </script>
 </body>
 </html>

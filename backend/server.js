@@ -15,7 +15,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Conexão com o banco
 const db = new sqlite3.Database('./database.db');
 
-// Criação da tabela de chamados
+// Criação das tabelas
 db.serialize(() => {
   db.run(`
     CREATE TABLE IF NOT EXISTS chamados (
@@ -23,17 +23,17 @@ db.serialize(() => {
       titulo TEXT,
       descricao TEXT,
       status TEXT,
-      prioridade TEXT
+      prioridade TEXT,
+      funcao TEXT
     )
   `);
-  // Criação da tabela de usuários
   db.run(`
     CREATE TABLE IF NOT EXISTS usuarios (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       nome TEXT,
       email TEXT UNIQUE,
       senha TEXT,
-      atendente INTEGER DEFAULT 0
+      funcao TEXT
     )
   `);
 });
@@ -68,15 +68,21 @@ app.post('/chamados', (req, res) => {
 
 // 🔸 Atualizar status do chamado
 app.put('/chamados/:id', (req, res) => {
-  const { status } = req.body;
-  db.run(
-    'UPDATE chamados SET status = ? WHERE id = ?',
-    [status, req.params.id],
-    function (err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ updated: this.changes });
-    }
-  );
+  const { status, atendente_id } = req.body;
+  let sql, params;
+  if (status === 'Em Atendimento' && atendente_id) {
+    sql = 'UPDATE chamados SET status = ?, atendente_id = ? WHERE id = ?';
+    params = [status, atendente_id, req.params.id];
+  } else if (status !== undefined) {
+    sql = 'UPDATE chamados SET status = ? WHERE id = ?';
+    params = [status, req.params.id];
+  } else {
+    return res.status(400).json({ error: 'Status não informado.' });
+  }
+  db.run(sql, params, function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ updated: this.changes });
+  });
 });
 
 // 🔸 Reabrir chamado
@@ -91,17 +97,16 @@ app.put('/chamados/:id/reabrir', (req, res) => {
   );
 });
 
-// Cadastro de usuário
-app.post('/usuarios/cadastrar', (req, res) => {
-  const { nome, email, senha, atendente } = req.body;
-  if (!nome || !email || !senha) {
-    return res.status(400).json({ error: 'Preencha todos os campos.' });
+// 🔸 Cadastro de usuário
+app.post('/usuarios', (req, res) => {
+  const { nome, email, senha, funcao } = req.body;
+  if (!nome || !email || !senha || !funcao || !funcao.trim()) {
+    return res.status(400).json({ error: 'Preencha todos os campos e selecione a função.' });
   }
-  // Criptografa a senha
   const hash = bcrypt.hashSync(senha, 10);
   db.run(
-    'INSERT INTO usuarios (nome, email, senha, atendente) VALUES (?, ?, ?, ?)',
-    [nome, email, hash, atendente ? 1 : 0],
+    'INSERT INTO usuarios (nome, email, senha, funcao) VALUES (?, ?, ?, ?)',
+    [nome, email, hash, funcao],
     function (err) {
       if (err) {
         if (err.message.includes('UNIQUE')) {
@@ -109,27 +114,27 @@ app.post('/usuarios/cadastrar', (req, res) => {
         }
         return res.status(500).json({ error: err.message });
       }
-      res.json({ id: this.lastID, nome, email, atendente: atendente ? true : false });
+      res.json({ id: this.lastID, nome, email, funcao });
     }
   );
 });
 
-// Login de usuário
+// 🔸 Login de usuário
 app.post('/usuarios/login', (req, res) => {
   const { email, senha } = req.body;
-  db.get(
-    'SELECT * FROM usuarios WHERE email = ?',
-    [email],
-    (err, row) => {
-      if (err) return res.status(500).json({ error: err.message });
-      if (!row) return res.status(401).json({ error: 'E-mail ou senha inválidos.' });
-      // Compara a senha informada com o hash
-      if (!bcrypt.compareSync(senha, row.senha)) {
-        return res.status(401).json({ error: 'E-mail ou senha inválidos.' });
-      }
-      res.json({ id: row.id, nome: row.nome, email: row.email, atendente: !!row.atendente });
+  db.get('SELECT * FROM usuarios WHERE email = ?', [email], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!row) return res.status(401).json({ error: 'E-mail ou senha inválidos.' });
+    if (!bcrypt.compareSync(senha, row.senha)) {
+      return res.status(401).json({ error: 'E-mail ou senha inválidos.' });
     }
-  );
+    res.json({
+      id: row.id,
+      nome: row.nome,
+      email: row.email,
+      funcao: row.funcao
+    });
+  });
 });
 
 // 🔸 Iniciar servidor

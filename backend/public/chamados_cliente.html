@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Meus Chamados</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f8fafc; margin: 0; padding: 0; }
+    .container { max-width: 700px; margin: 40px auto; background: #fff; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px #0001; }
+    h2 { margin-top: 0; }
+    form { margin-bottom: 32px; }
+    label { display: block; margin-bottom: 4px; }
+    input, textarea { width: 100%; margin-bottom: 12px; padding: 8px; border-radius: 4px; border: 1px solid #ccc; }
+    button { padding: 8px 20px; border-radius: 4px; border: 1px solid #007bff; background: #007bff; color: #fff; cursor: pointer; }
+    button:disabled { background: #ccc; border-color: #ccc; cursor: not-allowed; }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    th, td { border: 1px solid #eee; padding: 8px; text-align: left; }
+    th { background: #f0f0f0; }
+    .status { font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h2>Meus Chamados</h2>
+      <span id="usuario-logado"></span>
+      <button onclick="sair()" style="margin-left: 16px; background: #fff; color: #d00; border: 1px solid #d00;">Sair</button>
+    </div>
+    <form id="form-chamado">
+      <h3>Abrir novo chamado</h3>
+      <label for="titulo">Título</label>
+      <input type="text" id="titulo" required>
+      <label for="descricao">Descrição</label>
+      <textarea id="descricao" rows="3" required></textarea>
+      <button type="submit">Criar chamado</button>
+    </form>
+    <h3>Fila de chamados</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Título</th>
+          <th>Descrição</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="tabela-chamados"></tbody>
+    </table>
+  </div>
+  <script>
+    const API = '/chamados';
+
+    function usuarioLogado() {
+      return JSON.parse(localStorage.getItem('usuario') || '{}');
+    }
+
+    function mostrarUsuario() {
+      const usuario = usuarioLogado();
+      document.getElementById('usuario-logado').textContent = usuario.nome ? `Cliente: ${usuario.nome}` : '';
+    }
+
+    function sair() {
+      localStorage.removeItem('usuario');
+      window.location.href = '/login.html';
+    }
+
+    function carregarChamadosCliente() {
+      const usuario = usuarioLogado();
+      fetch(API)
+        .then(res => res.json())
+        .then(chamados => {
+          const meusChamados = chamados.filter(c => c.cliente_id == usuario.id);
+          const tbody = document.getElementById('tabela-chamados');
+          tbody.innerHTML = '';
+          meusChamados.forEach(chamado => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${chamado.id}</td>
+              <td>${chamado.titulo}</td>
+              <td>${chamado.descricao}</td>
+              <td class="status">${chamado.status}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        });
+    }
+
+    document.getElementById('form-chamado').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const usuario = usuarioLogado();
+      const titulo = document.getElementById('titulo').value;
+      const descricao = document.getElementById('descricao').value;
+      fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          titulo,
+          descricao,
+          cliente_id: usuario.id,
+          status: 'Em Aberto'
+        })
+      }).then(() => {
+        document.getElementById('form-chamado').reset();
+        carregarChamadosCliente();
+      });
+    });
+
+    // Inicialização
+    mostrarUsuario();
+    carregarChamadosCliente();
+  </script>
+</body>
+</html>

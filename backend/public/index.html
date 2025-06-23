@@ -9,6 +9,7 @@
 <body class="bg-light">
   <div class="container py-5">
     <div class="d-flex justify-content-end mb-3">
+      <span id="usuario-logado" style="margin-right: 12px; color: #333;"></span>
       <button id="logout-btn" class="btn btn-outline-danger">Sair</button>
     </div>
     <div class="text-center mb-4">
@@ -93,6 +94,13 @@
       'Concluídos': ''
     };
 
+  // Exibe o nome do usuário logado ao lado do botão sair
+  function mostrarUsuarioLogado() {
+    const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+    document.getElementById('usuario-logado').textContent = usuario.nome ? `Usuário: ${usuario.nome}` : '';
+  }
+  mostrarUsuarioLogado();
+
     function abrirFiltro(fila) {
       filaFiltroAtual = fila;
       document.getElementById('tituloModalFiltro').innerText = `Filtrar ${fila} por prioridade`;
@@ -111,6 +119,28 @@
       carregarChamados();
     }
 
+    function filtrarFilaAtendimento(chamado) {
+      const prioridadeFiltro = filtrosPorFila['Fila de Atendimento'];
+      return chamado.status === 'Fila de Atendimento' &&
+        (!prioridadeFiltro || chamado.prioridade === prioridadeFiltro);
+    }
+
+    function filtrarEmAtendimento(chamado) {
+      const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+      const prioridadeFiltro = filtrosPorFila['Em Atendimento'];
+      return chamado.status === 'Em Atendimento' &&
+        (!prioridadeFiltro || chamado.prioridade === prioridadeFiltro) &&
+        (!usuario.id || chamado.atendente_id === usuario.id);
+    }
+
+    function filtrarConcluidos(chamado) {
+      const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+      const prioridadeFiltro = filtrosPorFila['Concluídos'];
+      return chamado.status === 'Concluídos' &&
+        (!prioridadeFiltro || chamado.prioridade === prioridadeFiltro) &&
+        (!usuario.id || chamado.atendente_id === usuario.id);
+    }
+
     function carregarChamados() {
       fetch(API)
         .then(r => r.json())
@@ -120,10 +150,6 @@
           document.getElementById('concluidos').innerHTML = '';
 
           chamados.forEach(c => {
-            if (c.status === 'Fila de Atendimento' && filtrosPorFila['Fila de Atendimento'] && c.prioridade !== filtrosPorFila['Fila de Atendimento']) return;
-            if (c.status === 'Em Atendimento' && filtrosPorFila['Em Atendimento'] && c.prioridade !== filtrosPorFila['Em Atendimento']) return;
-            if (c.status === 'Concluídos' && filtrosPorFila['Concluídos'] && c.prioridade !== filtrosPorFila['Concluídos']) return;
-
             let li = document.createElement('li');
             li.className = 'list-group-item d-flex justify-content-between align-items-start';
             li.innerHTML = `
@@ -135,21 +161,21 @@
               </div>
             `;
 
-            if (c.status === 'Fila de Atendimento') {
+            if (filtrarFilaAtendimento(c)) {
               let btn = document.createElement('button');
               btn.className = 'btn btn-sm btn-outline-warning';
               btn.textContent = 'Atender';
               btn.onclick = () => atualizarStatus(c.id, 'Em Atendimento');
               li.appendChild(btn);
               document.getElementById('fila').appendChild(li);
-            } else if (c.status === 'Em Atendimento') {
+            } else if (filtrarEmAtendimento(c)) {
               let btn = document.createElement('button');
               btn.className = 'btn btn-sm btn-outline-success';
               btn.textContent = 'Concluir';
               btn.onclick = () => atualizarStatus(c.id, 'Concluídos');
               li.appendChild(btn);
               document.getElementById('atendimento').appendChild(li);
-            } else if (c.status === 'Concluídos') {
+            } else if (filtrarConcluidos(c)) {
               let btn = document.createElement('button');
               btn.className = 'btn btn-sm btn-outline-primary';
               btn.textContent = 'Reabrir';
@@ -181,10 +207,15 @@
     }
 
     function atualizarStatus(id, status) {
+      const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+      const body = { status };
+      if (status === 'Em Atendimento' && usuario && usuario.id) {
+        body.atendente_id = usuario.id;
+      }
       fetch(`${API}/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
+        body: JSON.stringify(body)
       }).then(carregarChamados);
     }
 
@@ -195,7 +226,6 @@
       }).then(carregarChamados);
     }
 
-    // Função de logout
     document.getElementById('logout-btn').onclick = function() {
       localStorage.removeItem('usuario');
       window.location.href = 'login.html';
