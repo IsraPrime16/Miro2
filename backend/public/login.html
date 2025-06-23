@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Login e Cadastro</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { background: #f8f9fa; }
+    .login-container {
+      max-width: 400px;
+      margin: 60px auto;
+      background: #fff;
+      padding: 32px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px #0001;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="login-container">
+      <div id="login-form">
+        <h3 class="mb-3 text-center">Login</h3>
+        <div class="mb-3">
+          <input type="email" id="login-email" class="form-control" placeholder="E-mail" required>
+        </div>
+        <div class="mb-3">
+          <input type="password" id="login-senha" class="form-control" placeholder="Senha" required>
+        </div>
+        <button onclick="login()" class="btn btn-primary w-100 mb-2">Entrar</button>
+        <button onclick="showRegister()" class="btn btn-link w-100">Criar conta</button>
+        <div id="login-erro" class="text-danger text-center mt-2"></div>
+      </div>
+      <div id="register-form" style="display:none;">
+        <h3 class="mb-3 text-center">Cadastro</h3>
+        <div class="mb-3">
+          <input type="text" id="register-nome" class="form-control" placeholder="Nome" required>
+        </div>
+        <div class="mb-3">
+          <input type="email" id="register-email" class="form-control" placeholder="E-mail" required>
+        </div>
+        <div class="mb-3">
+          <input type="password" id="register-senha" class="form-control" placeholder="Senha" required>
+        </div>
+        <div class="mb-3 form-check">
+          <input type="checkbox" class="form-check-input" id="register-atendente">
+          <label class="form-check-label" for="register-atendente">Atendente</label>
+        </div>
+        <button onclick="register()" class="btn btn-success w-100 mb-2">Cadastrar</button>
+        <button onclick="showLogin()" class="btn btn-link w-100">Já tenho conta</button>
+        <div id="register-erro" class="text-danger text-center mt-2"></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    function showRegister() {
+      document.getElementById('login-form').style.display = 'none';
+      document.getElementById('register-form').style.display = 'block';
+    }
+    function showLogin() {
+      document.getElementById('register-form').style.display = 'none';
+      document.getElementById('login-form').style.display = 'block';
+    }
+    function login() {
+      const email = document.getElementById('login-email').value;
+      const senha = document.getElementById('login-senha').value;
+      fetch('/usuarios/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, senha })
+      })
+      .then(r => r.json())
+      .then(res => {
+        if (res.error) {
+          document.getElementById('login-erro').innerText = res.error;
+        } else {
+          localStorage.setItem('usuario', JSON.stringify(res));
+          window.location.href = 'index.html';
+        }
+      });
+    }
+    function register() {
+      const nome = document.getElementById('register-nome').value;
+      const email = document.getElementById('register-email').value;
+      const senha = document.getElementById('register-senha').value;
+      const atendente = document.getElementById('register-atendente').checked;
+      fetch('/usuarios/cadastrar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome, email, senha, atendente })
+      })
+      .then(r => r.json())
+      .then(res => {
+        if (res.error) {
+          document.getElementById('register-erro').innerText = res.error;
+        } else {
+          // Limpa os campos do formulário de cadastro
+          document.getElementById('register-nome').value = '';
+          document.getElementById('register-email').value = '';
+          document.getElementById('register-senha').value = '';
+          document.getElementById('register-atendente').checked = false;
+          showLogin();
+          document.getElementById('login-email').value = email;
+        }
+      });
+    }
+  </script>
+</body>
+</html>

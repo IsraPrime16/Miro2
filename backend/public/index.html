@@ -8,6 +8,9 @@
 </head>
 <body class="bg-light">
   <div class="container py-5">
+    <div class="d-flex justify-content-end mb-3">
+      <button id="logout-btn" class="btn btn-outline-danger">Sair</button>
+    </div>
     <div class="text-center mb-4">
       <h1 class="display-5 fw-bold text-primary">Sistema de Chamados</h1>
       <p class="lead">Gerencie chamados de forma simples e rápida</p>
@@ -191,6 +194,12 @@
         headers: { 'Content-Type': 'application/json' }
       }).then(carregarChamados);
     }
+
+    // Função de logout
+    document.getElementById('logout-btn').onclick = function() {
+      localStorage.removeItem('usuario');
+      window.location.href = 'login.html';
+    };
 
     carregarChamados();
   </script>
